@@ -1,0 +1,11 @@
+{
+  "name": "tpt-mock-generator",
+  "description": "Generates WireMock stub files for TPT local development",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@faker-js/faker": "^9.0.0",
+    "graphql": "^16.0.0",
+    "js-yaml": "^4.1.0"
+  }
+}

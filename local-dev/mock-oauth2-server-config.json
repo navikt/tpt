@@ -1,0 +1,33 @@
+{
+  "interactiveLogin": true,
+  "tokenCallbacks": [
+    {
+      "issuerId": "azuread",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "code",
+          "match": "*",
+          "claims": {
+            "aud": "tpt-frontend-local",
+            "preferred_username": "${subject}",
+            "name": "${subject}",
+            "NAVident": "${subject}",
+            "oid": "00000000-0000-0000-0000-000000000099",
+            "tid": "62366534-1ec3-4962-8869-9b5535279d0b",
+            "groups": ["00000000-0000-0000-0000-000000000001"],
+            "scp": "defaultaccess",
+            "azp": "${clientId}"
+          }
+        },
+        {
+          "requestParam": "requested_token_use",
+          "match": "on_behalf_of",
+          "claims": {
+            "aud": "tpt-backend-local"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "teams": [
+    {
+      "slug": "team-lokal-utvikler",
+      "workloads": [
+        {
+          "id": "workload-1",
+          "name": "example-app",
+          "workloadType": "app",
+          "imageTag": "2024-01-15-abc1234",
+          "repository": "navikt/example-app",
+          "environment": "dev-gcp",
+          "ingressTypes": ["INTERNAL"],
+          "vulnerabilities": [
+            {
+              "identifier": "CVE-2023-44487",
+              "severity": "HIGH",
+              "packageName": "io.netty:netty-codec-http2",
+              "description": "HTTP/2 Rapid Reset Attack",
+              "vulnerabilityDetailsLink": "https://nvd.nist.gov/vuln/detail/CVE-2023-44487",
+              "suppressed": false
+            },
+            {
+              "identifier": "CVE-2024-21626",
+              "severity": "CRITICAL",
+              "packageName": "github.com/opencontainers/runc",
+              "description": "runc container escape vulnerability",
+              "vulnerabilityDetailsLink": "https://nvd.nist.gov/vuln/detail/CVE-2024-21626",
+              "suppressed": false
+            }
+          ]
+        },
+        {
+          "id": "workload-2",
+          "name": "example-api",
+          "workloadType": "app",
+          "imageTag": "2024-02-01-def5678",
+          "repository": "navikt/example-api",
+          "environment": "prod-gcp",
+          "ingressTypes": ["INTERNAL", "EXTERNAL"],
+          "vulnerabilities": [
+            {
+              "identifier": "CVE-2023-2976",
+              "severity": "MEDIUM",
+              "packageName": "com.google.guava:guava",
+              "description": "Guava temporary directory creation vulnerability",
+              "vulnerabilityDetailsLink": "https://nvd.nist.gov/vuln/detail/CVE-2023-2976",
+              "suppressed": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "team-b",
+      "workloads": [
+        {
+          "id": "workload-3",
+          "name": "another-service",
+          "workloadType": "job",
+          "imageTag": "2024-03-10-ghi9012",
+          "repository": "navikt/another-service",
+          "environment": "prod-gcp",
+          "ingressTypes": [],
+          "vulnerabilities": []
+        }
+      ]
+    }
+  ]
+}

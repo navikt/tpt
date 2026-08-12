@@ -1,0 +1,40 @@
+# =============================================================================
+# TPT Mock Generator Configuration
+# =============================================================================
+# Edit this file to control the shape and volume of generated WireMock stubs.
+# After editing, run: ./scripts/generate-mocks.sh
+# =============================================================================
+
+nais:
+  # Number of teams the mock user belongs to
+  teams: 2
+  # Applications per team
+  apps_per_team: 3
+  # Jobs (nais jobs) per team
+  jobs_per_team: 1
+  # Vulnerabilities per workload (apps and jobs)
+  vulns_per_workload: 8
+  # Fraction of CVEs that are shared across workloads within a variation (0.0–1.0)
+  # 0.3 means ~30% of CVEs appear in multiple workloads, simulating a widespread library vuln
+  shared_cve_ratio: 0.3
+  # Number of scenario variations to generate per operation
+  # WireMock cycles through these predictably: 1 → 2 → 3 → 1 → ...
+  variations: 3
+  # Nais environments to use in generated workload data
+  environments:
+    - dev-gcp
+    - prod-gcp
+
+gcve:
+  # Number of CVE record variations to generate for the single-CVE endpoint
+  variations: 3
+  # Number of CVE records to include in the list/incremental-sync endpoint response
+  list_size: 10
+
+teamkatalogen:
+  # Number of naisTeam slugs the mock user belongs to
+  nais_teams_per_user: 2
+  # Number of clusters to include in membership response
+  clusters: 1
+  # Number of product areas to include in membership response
+  product_areas: 1
