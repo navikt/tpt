@@ -88,8 +88,14 @@ fnox exec -- docker compose -f local-dev/docker-compose.yml up --build
 | Neo4j browser | http://localhost:7474 | user: `neo4j`, password: `password` |
 
 **Login flow:** Visit http://localhost:3000 — Wonderwall redirects to the mock login page at
-`localhost:8888`. Enter any username (e.g. `alice`). All users are granted admin access locally
-(the mock IdP injects the admin group UUID into every token).
+`localhost:8888`. Enter a username to log in:
+
+| Username | Role |
+|---|---|
+| `admin` | Admin (Entra ID admin group injected into token) |
+| anything else (e.g. `alice`) | Regular user (no admin group) |
+
+**Switching users:** Clear cookies for `localhost` in your browser, then visit http://localhost:3000 and log in with the new username.
 
 **WireMock stubs** for the Nais API, GCVE, and Teamkatalogen are generated on demand and not committed to git.
 Run `./scripts/generate-mocks.sh` (requires `nais login`) before your first Mode B startup, and again when you want fresh randomized data..

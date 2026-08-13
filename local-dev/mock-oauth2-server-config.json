@@ -6,8 +6,8 @@
       "tokenExpiry": 3600,
       "requestMappings": [
         {
-          "requestParam": "code",
-          "match": "*",
+          "requestParam": "subject",
+          "match": "^admin$",
           "claims": {
             "aud": "tpt-frontend-local",
             "preferred_username": "${subject}",
@@ -16,6 +16,21 @@
             "oid": "00000000-0000-0000-0000-000000000099",
             "tid": "62366534-1ec3-4962-8869-9b5535279d0b",
             "groups": ["00000000-0000-0000-0000-000000000001"],
+            "scp": "defaultaccess",
+            "azp": "${clientId}"
+          }
+        },
+        {
+          "requestParam": "subject",
+          "match": ".*",
+          "claims": {
+            "aud": "tpt-frontend-local",
+            "preferred_username": "${subject}",
+            "name": "${subject}",
+            "NAVident": "${subject}",
+            "oid": "00000000-0000-0000-0000-000000000099",
+            "tid": "62366534-1ec3-4962-8869-9b5535279d0b",
+            "groups": [],
             "scp": "defaultaccess",
             "azp": "${clientId}"
           }
