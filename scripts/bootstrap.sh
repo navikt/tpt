@@ -10,19 +10,16 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$(cd "$REPO_ROOT/../tpt-backend" 2>/dev/null && pwd)" || true
 FRONTEND_DIR="$(cd "$REPO_ROOT/../tpt-frontend" 2>/dev/null && pwd)" || true
 COMPOSE_DIR="$REPO_ROOT/local-dev"
 
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-GREEN='\033[0;32m'
+# shellcheck source=scripts/lib.sh
+source "$SCRIPT_DIR/lib.sh"
+
 BOLD='\033[1m'
 RESET='\033[0m'
-
-ok()   { echo -e "  ${GREEN}✓${RESET} $*"; }
-warn() { echo -e "  ${YELLOW}!${RESET} $*"; }
-fail() { echo -e "  ${RED}✗${RESET} $*"; }
 
 # =============================================================================
 # Helper: check a command exists and optionally meets a minimum version
@@ -49,20 +46,6 @@ check_java_version() {
     return 1
   fi
   ok "Java $ver"
-}
-
-check_node_version() {
-  if ! command -v node &>/dev/null; then
-    fail "node not found"
-    return 1
-  fi
-  local ver
-  ver=$(node --version | sed 's/v//' | cut -d'.' -f1)
-  if [[ "$ver" -lt 24 ]]; then
-    fail "Node $ver found, Node 24+ required"
-    return 1
-  fi
-  ok "Node $ver"
 }
 
 check_docker() {
@@ -225,6 +208,21 @@ run_mode_b() {
     warn "Review $COMPOSE_DIR/.env before continuing (press Enter to proceed or Ctrl+C to abort)"
     read -r
   fi
+
+  # Verify WireMock stubs are present — they are not committed and must be
+  # generated before Mode B starts. WireMock starts successfully without them
+  # but silently returns 404 for every stub endpoint, causing hard-to-debug failures.
+  if ! wiremock_stubs_present "$COMPOSE_DIR/wiremock/mappings"; then
+    echo ""
+    fail "WireMock stubs are missing."
+    echo ""
+    echo "  Run the generator first (requires nais CLI + nais login):"
+    echo "    ./scripts/generate-mocks.sh"
+    echo ""
+    echo "  Then re-run this script."
+    exit 1
+  fi
+  ok "WireMock stubs present"
 
   echo ""
   echo -e "${BOLD}Starting Mode B (this may take a few minutes on first run)...${RESET}"

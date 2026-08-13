@@ -15,14 +15,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RESET='\033[0m'
-
-ok()   { echo -e "  ${GREEN}✓${RESET} $*"; }
-fail() { echo -e "  ${RED}✗${RESET} $*"; }
-warn() { echo -e "  ${YELLOW}!${RESET} $*"; }
+# shellcheck source=scripts/lib.sh
+source "$SCRIPT_DIR/lib.sh"
 
 echo ""
 echo "TPT mock stub generator"
@@ -34,19 +28,8 @@ echo ""
 
 errors=0
 
-# Node.js >= 24
-if ! command -v node &>/dev/null; then
-  fail "node not found — install Node.js 24+"
-  errors=$((errors + 1))
-else
-  node_ver=$(node --version | sed 's/v//' | cut -d'.' -f1)
-  if [[ "$node_ver" -lt 24 ]]; then
-    fail "Node.js $node_ver found, 24+ required"
-    errors=$((errors + 1))
-  else
-    ok "Node.js $node_ver"
-  fi
-fi
+# Node.js >= 24 (via shared lib.sh)
+check_node_version || errors=$((errors + 1))
 
 # nais CLI
 if ! command -v nais &>/dev/null; then

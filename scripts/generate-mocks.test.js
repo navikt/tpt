@@ -1,7 +1,7 @@
 /**
- * Tests for generate-mocks-builders.js
+ * Tests for the stub generation module (generate-mocks.js).
  *
- * Seam: the pure builder functions that produce stub payloads.
+ * Seam: the exported builder functions that produce stub payloads.
  * We verify that team slugs are consistent across the three stubs
  * that must agree: user-vulns, team-memberships, and teamkatalogen membership.
  */
@@ -13,7 +13,7 @@ import {
   buildUserVulnsPayload,
   buildTeamMembershipsPayload,
   teamkatalogenMembershipStub,
-} from './generate-mocks-builders.js'
+} from './generate-mocks.js'
 
 const cfg = {
   nais: {
