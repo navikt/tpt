@@ -9,6 +9,16 @@ running **production code** in a single Docker Compose environment, so the team 
 
 Everything else in this repo — docs, schemas, scripts, ADRs — exists to support that goal.
 
+## Contents
+
+- [What is TittPåTing?](#what-is-tittp%C3%A5ting)
+- [Repositories](#repositories)
+- [What lives here](#what-lives-here)
+- [Getting started](#getting-started)
+- [Quick start](#quick-start)
+- [Keeping the test rig healthy](#keeping-the-test-rig-healthy)
+- [Contact](#contact)
+
 ## What is TittPåTing?
 
 TittPåTing is a vulnerability prioritization and compliance tool for Nav developers. It collects
