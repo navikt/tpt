@@ -70,19 +70,34 @@ fnox reads this from your keychain at runtime — no `.env` files needed.
 
 ### 3. Clone sibling repositories
 
-The bootstrap script expects `tpt-backend` and `tpt-frontend` as siblings of this repo:
+The bootstrap script expects all three sibling repos next to this one:
 
 ```
 ~/dev/
-├── tpt/             # this repo
+├── tpt/                  # this repo
 ├── tpt-backend/
-└── tpt-frontend/
+├── tpt-frontend/
+└── tpt-data-collector/
 ```
 
 ```bash
 git clone git@github.com:navikt/tpt-backend.git
 git clone git@github.com:navikt/tpt-frontend.git
+git clone git@github.com:navikt/tpt-data-collector.git
 ```
+
+### 4. Generate WireMock stubs
+
+The stack (Mode B) requires WireMock stubs that are not committed to the repo. Generate them once
+before first run, and again whenever an external API schema changes:
+
+```bash
+fnox exec -- ./scripts/generate-mocks.sh
+```
+
+This fetches live data from the Nais API. Before running it, make sure:
+- naisdevice is running and connected
+- you are authenticated: `nais auth login`
 
 ## Quick start
 
