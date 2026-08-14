@@ -43,6 +43,47 @@ tpt/
     └── runbooks/           # Operational guides and troubleshooting
 ```
 
+## Getting started
+
+### 1. Install tools
+
+All required tools are declared in `mise.toml`. Install [mise](https://mise.jdx.dev) if you haven't already, then run:
+
+```bash
+mise install
+```
+
+This installs Java 25, Node.js 24, pnpm, and fnox.
+
+### 2. Store your `NODE_AUTH_TOKEN` in the keychain
+
+`NODE_AUTH_TOKEN` is a GitHub PAT with `read:packages` scope. It is required to pull private
+`@navikt` npm packages during the frontend build.
+
+Store it once with fnox:
+
+```bash
+fnox secret set NODE_AUTH_TOKEN <your-token>
+```
+
+fnox reads this from your keychain at runtime — no `.env` files needed.
+
+### 3. Clone sibling repositories
+
+The bootstrap script expects `tpt-backend` and `tpt-frontend` as siblings of this repo:
+
+```
+~/dev/
+├── tpt/             # this repo
+├── tpt-backend/
+└── tpt-frontend/
+```
+
+```bash
+git clone git@github.com:navikt/tpt-backend.git
+git clone git@github.com:navikt/tpt-frontend.git
+```
+
 ## Quick start
 
 ```bash
