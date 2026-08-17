@@ -209,6 +209,38 @@ run_mode_b() {
     read -r
   fi
 
+  # Generate a throw-away RSA key for GitHub App auth if the value is still
+  # the placeholder. The key is written into local-dev/.env on the fly so it is
+  # never committed. The data-collector only needs a syntactically valid PEM key
+  # to start; actual GitHub API calls still require real credentials.
+  #
+  # Docker Compose reads multi-line values from .env when they are wrapped in
+  # double quotes, preserving the embedded newlines — which is what the JWK
+  # parser in the data-collector expects.
+  if grep -q '^GITHUB_APP_PRIVATE_KEY=dummy' "$COMPOSE_DIR/.env"; then
+    if ! command -v openssl &>/dev/null; then
+      warn "openssl not found — cannot generate GITHUB_APP_PRIVATE_KEY; data-collector may fail to start"
+    else
+      echo "Generating throw-away RSA key for GITHUB_APP_PRIVATE_KEY..."
+      _key_file="$(mktemp)"
+      openssl genrsa 2048 2>/dev/null > "$_key_file"
+      # Replace the dummy line; awk reads the PEM from a file to avoid
+      # newline-in-variable limitations.
+      awk -v keyfile="$_key_file" '
+        /^GITHUB_APP_PRIVATE_KEY=dummy$/ {
+          printf "GITHUB_APP_PRIVATE_KEY=\""
+          while ((getline line < keyfile) > 0) print line
+          print "\""
+          next
+        }
+        { print }
+      ' "$COMPOSE_DIR/.env" > "$COMPOSE_DIR/.env.tmp" \
+        && mv "$COMPOSE_DIR/.env.tmp" "$COMPOSE_DIR/.env"
+      rm -f "$_key_file"
+      ok "GITHUB_APP_PRIVATE_KEY generated (throw-away, local only)"
+    fi
+  fi
+
   # Verify WireMock stubs are present — they are not committed and must be
   # generated before Mode B starts. WireMock starts successfully without them
   # but silently returns 404 for every stub endpoint, causing hard-to-debug failures.
