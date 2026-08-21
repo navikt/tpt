@@ -5,7 +5,7 @@ How the engineering skills should consume this repo's domain documentation when 
 ## Before exploring, read these
 
 - **`CONTEXT.md`** at the repo root — ubiquitous language, key concepts, architectural intent for the TPT stack.
-- **`docs/architecture/decisions/`** — read ADRs that touch the area you're about to work in.
+- **`docs/adr/`** — read ADRs that touch the area you're about to work in.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 
@@ -17,6 +17,7 @@ Single-context repo:
 /
 ├── CONTEXT.md
 └── docs/
+    ├── adr/                           ← architecture decision records
     └── agents/                        ← agent tooling (issue tracker, triage labels, domain docs)
 ```
 
@@ -31,3 +32,9 @@ If the concept you need isn't in the glossary yet, that's a signal — either yo
 If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
 
 > _Contradicts ADR-0007 (record architecture decisions) — but worth reopening because…_
+
+## ADR format
+
+ADRs live in `docs/adr/` as `NNNN-kebab-title.md`, numbered sequentially from `0001`. Use the
+Nygard format: **Title** (`# ADR-NNNN: …`), **Status**, **Date**, **Deciders**, **Context**,
+**Decision**, **Consequences**. See `docs/adr/0001-pull-based-memory-sync.md` as the reference.

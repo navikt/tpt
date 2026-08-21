@@ -1,13 +1,20 @@
-# TittPåTing (TPT) — Test Rig
+# TittPåTing (TPT)
 
-This repository is the test rig for the TPT stack. Its primary job is to spin up all TPT services
-running **production code** in a single Docker Compose environment, so the team can:
+This repository plays two roles for the TPT stack.
+
+**Test rig.** It spins up all TPT services running **production code** in a single Docker Compose
+environment, so the team can:
 
 - **Verify end-to-end behaviour** with realistic but controlled data — without needing admin access to production.
 - **Demo the product** to stakeholders against a stable, repeatable dataset.
 - **Catch breaking contract changes** with external dependencies (Nais API, GCVE, Teamkatalogen, GitHub) before they reach production.
 
-Everything else in this repo — docs, schemas, scripts, ADRs — exists to support that goal.
+**Shared knowledge & coordination hub.** It is the stack's shared memory. Cross-cutting work that
+spans multiple TPT repos happens here: architecture decisions ([`docs/adr/`](docs/adr/)), the
+ubiquitous language ([`CONTEXT.md`](CONTEXT.md)), research, brainstorming, and breaking large
+initiatives into tickets for the individual service repos.
+
+The schemas, test data, and scripts here exist to support the test-rig goal.
 
 ## Contents
 
@@ -32,7 +39,8 @@ and presents a risk-scored, actionable view per team.
 | [navikt/tpt-backend](https://github.com/navikt/tpt-backend) | Ktor API — vulnerability data, risk scoring, auth, Kafka sync |
 | [navikt/tpt-frontend](https://github.com/navikt/tpt-frontend) | Next.js frontend — vulnerability dashboard |
 | [navikt/tpt-data-collector](https://github.com/navikt/tpt-data-collector) | Data collector — GitHub webhooks, Cartography/Neo4j, Kafka producer |
-| [navikt/tpt](https://github.com/navikt/tpt) | **This repo** — test rig, docs, schemas, test data |
+| [navikt/tpt-graph](https://github.com/navikt/tpt-graph) | Graph service (team appsec) — reads the Cartography/Neo4j graph over Bolt and serves a read-only attack-path web UI. Candidate graph datasource for TPT (research in progress). |
+| [navikt/tpt](https://github.com/navikt/tpt) | **This repo** — test rig, shared knowledge & coordination hub (docs, ADRs, schemas, test data) |
 
 ## What lives here
 
@@ -49,7 +57,8 @@ tpt/
 │   ├── bootstrap.sh        # One-stop startup script
 │   └── generate-mocks.*    # Generates WireMock stubs from live Nais data
 └── docs/
-    ├── architecture/       # System diagram, component descriptions, ADRs
+    ├── adr/                # Architecture decision records (cross-cutting)
+    ├── agents/             # Agent tooling — issue tracker, triage labels, domain docs
     └── runbooks/           # Operational guides and troubleshooting
 ```
 
