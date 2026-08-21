@@ -4,6 +4,6 @@
     "navikt/tpt-backend": { "lastSyncedSha": "c2e7b385ca4bb13b3b59077602bacc0995e46805", "lastSyncedAt": "2026-08-20T13:55:53+02:00" },
     "navikt/tpt-frontend": { "lastSyncedSha": "b9c172b154697ae607dfe0fdd687725f599f5c8d", "lastSyncedAt": "2026-08-20T13:56:07+02:00" },
     "navikt/tpt-data-collector": { "lastSyncedSha": "3832a71cea4c1526f49b7957db168148da6324fa", "lastSyncedAt": "2026-08-20T09:39:53+02:00" },
-    "navikt/tpt-graph": { "lastSyncedSha": "caa238a6678fdfc877922533ca483098aefcb5a3", "lastSyncedAt": "2026-08-05T15:24:15+02:00" }
+    "navikt/tpt-graph": { "lastSyncedSha": "f1b9c0dc7b57ef89966c3f68bcc81a995c657d73", "lastSyncedAt": "2026-08-21T00:00:00+02:00" }
   }
 }

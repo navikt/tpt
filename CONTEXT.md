@@ -65,12 +65,14 @@ and presents actionable, risk-scored views per team across three areas:
 
 ## Repository map
 
-| Repo | Owner | Responsibility |
+Each service owns exactly one named capability — see ADR-0004.
+
+| Repo | Owner | Capability |
 |---|---|---|
-| `tpt-backend` | tpt | Ktor API — vulnerability aggregation, risk scoring, Kafka sync, admin endpoints, PostgreSQL |
+| `tpt-backend` | tpt | Aggregate vulnerability and findings data, risk-score it, resolve user context, and present it to the frontend. Permanent aggregation hub. |
 | `tpt-frontend` | tpt | Next.js UI — dashboard, per-team views, compliance tab, golden-path tab |
-| `tpt-data-collector` | tpt | Collects data (GitHub GraphQL, Cartography/Neo4j) on request from the backend and publishes it to Kafka; Kafka producer only |
-| `tpt-graph` | appsec | Go service that reads the Cartography/Neo4j Graph over Bolt — attack-path web UI + a JSON API for its own frontend. Candidate (not yet wired) graph datasource for TPT. |
+| `tpt-data-collector` | tpt | Collect findings data from external sources (GitHub, platform, …) on request from the backend and publish it to Kafka. The concern is *findings collection*, not any specific integration. |
+| `tpt-graph` | appsec | Serve graph-derived data (attack paths, infrastructure relationships) from the Cartography/Neo4j graph. |
 | `tpt` (this repo) | tpt | IaC, docs, local dev stack, schemas, test data, agent tooling |
 
 ## The Kafka seam
@@ -141,6 +143,12 @@ conditional on that audience — see ADR-0002 if it ever changes.)*
 Note the model is *not* "sidecars own all tokens": the data collector validates inbound tokens
 itself against Entra's JWKS, and the backend attaches a mounted service-account token when calling
 the Nais Console API. Texas is used for OBO exchange and token introspection, not for everything.
+
+### One capability per service (ADR-0004)
+
+Each TPT service owns exactly one named capability. New functionality belongs in an existing service only if it falls squarely within that service's capability; otherwise it goes in a new service. "Concern" is capability-shaped, not integration-shaped — the data collector's concern is *findings collection*, not "GitHub"; it may add new integrations without splitting. The backend is the permanent aggregation hub; specialised services do not call each other.
+
+Placement rule: name what you're building in one sentence. If that sentence matches an existing service's capability, put it there. If it introduces an "and", or no existing service covers it, create a new service.
 
 ### The backend / data-collector split (ADR-0003)
 
