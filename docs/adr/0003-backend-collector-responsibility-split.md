@@ -4,6 +4,10 @@
 - **Date**: 2026-08-21
 - **Deciders**: TPT team
 
+> **Note (2026-09-29):** The transport described here ("publishes to Kafka", "the Kafka seam") is
+> superseded by ADR-0005: the data collector now sends results to the backend with HTTP callbacks.
+> The responsibility split in this ADR still stands.
+
 ## Context
 
 TPT began as a **vulnerability enrichment and prioritization** tool. That is the backend's original
@@ -64,3 +68,4 @@ the user is, it's the backend.
 
 - `CONTEXT.md` → repository map, "The Kafka seam", "Architectural intent".
 - ADR-0002 — user context lives in the backend.
+- ADR-0005 — replaces Kafka with HTTP callbacks and Postgres LISTEN/NOTIFY.

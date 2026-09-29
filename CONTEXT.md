@@ -45,12 +45,14 @@ and presents actionable, risk-scored views per team across three areas:
 | **Finding** | Used in the compliance and golden-path contexts. Means a compliance gap or best-practice deviation. Not a synonym for Vulnerability. |
 | **Action** | A required remediation step in the compliance context. |
 | **User context** | The backend's resolution of the authenticated user (`preferred_username`) to the Teams they belong to, used to fetch that user's relevant data. A relevance mechanism, not access control — see ADR-0002. Owned by the backend. |
-| **Data collector** | The `tpt-data-collector` service. The home for **new data sources and data types that are not vulnerability enrichment** (ADR-0003). On request from the backend (over HTTP) it collects data — e.g. GitHub vulnerability alerts via GraphQL, Cartography/Neo4j checks — and publishes it to Kafka. Never called "collector service" or "tpt-data-collector" in domain language — just "the data collector". |
+| **Data collector** | The `tpt-data-collector` service. The home for **new data sources and data types that are not vulnerability enrichment** (ADR-0003). On request from the backend (over HTTP, answered with 202) it collects data — e.g. GitHub vulnerability alerts via GraphQL, Cartography/Neo4j checks — and sends it back to the backend as **callbacks** (ADR-0005; Kafka during the transition). Never called "collector service" or "tpt-data-collector" in domain language — just "the data collector". |
 | **Cartography** | CNCF tool that models cloud, GitHub, Kubernetes, and Nais resources as a graph and populates Neo4j. It is the writer to the graph, not a TPT service. |
 | **Graph** | The Cartography-populated Neo4j graph of infrastructure, ownership, and dependency relationships. Today it is read over direct Bolt by appsec's own tools; it is not yet a datasource for the backend or frontend. |
 | **tpt-graph** | An appsec-owned service that reads the Graph over Bolt and serves a read-only attack-path web UI plus a small JSON API for its own frontend. The intent to make it a general graph-access layer for the rest of TPT is research, not current state — see "Architectural intent". |
-| **Sync** | A scheduled or on-demand operation that refreshes data from an external source into PostgreSQL. Sync kinds are named after their Kafka command key (e.g. `team_sync`, `vuln_data_sync`, `gcve_sync`); the current set lives in code, not here. |
-| **SSE** | Server-Sent Events — the backend's push channel to the frontend. Events are **signals, not data**: an event tells the frontend something changed; the frontend then re-fetches over REST (the "notify-then-fetch" pattern). Cross-service progress originates as Kafka signals from the data collector, which the backend re-broadcasts over SSE. |
+| **Sync** | A scheduled or on-demand operation that refreshes data from an external source into PostgreSQL. Sync kinds have short names (e.g. `team_sync`, `vuln_data_sync`, `gcve_sync`); the current set lives in code, not here. The backend runs its own syncs in-process, guarded by a Postgres sync lock (ADR-0005). |
+| **SSE** | Server-Sent Events — the backend's push channel to the frontend. Events are **signals, not data**: an event tells the frontend something changed; the frontend then re-fetches over REST (the "notify-then-fetch" pattern). Cross-service progress arrives as callbacks from the data collector, which the backend re-broadcasts over SSE. Every event goes through the **SSE event log** so that all backend pods see it. |
+| **Callback** | An HTTP request from the data collector to the backend that delivers results (data or lifecycle signals) for a job the backend triggered earlier, or for a GitHub webhook. Authenticated with Entra machine-to-machine tokens. See ADR-0005. |
+| **SSE event log** | The backend's Postgres table of recent SSE events plus a LISTEN/NOTIFY channel. Publishing inserts a row and notifies; every pod listens and pushes the event to its own connected browsers. Also lets a reconnecting browser replay missed events via `Last-Event-ID`. See ADR-0005. |
 | **preferred_username** | The employee's identity claim on the Entra ID token. The backend derives *who is asking* from it and returns that user's Teams' data by default — a relevance mechanism (**user context**), not a security control; TPT's vulnerability data is not secret. Never passed as a request parameter. See "User context" in Architectural intent. |
 
 ## Retired synonyms
@@ -71,32 +73,37 @@ Each service owns exactly one named capability — see ADR-0004.
 |---|---|---|
 | `tpt-backend` | tpt | Aggregate vulnerability and findings data, risk-score it, resolve user context, and present it to the frontend. Permanent aggregation hub. |
 | `tpt-frontend` | tpt | Next.js UI — dashboard, per-team views, compliance tab, golden-path tab |
-| `tpt-data-collector` | tpt | Collect findings data from external sources (GitHub, platform, …) on request from the backend and publish it to Kafka. The concern is *findings collection*, not any specific integration. |
+| `tpt-data-collector` | tpt | Collect findings data from external sources (GitHub, platform, …) on request from the backend and send it back to the backend as callbacks. The concern is *findings collection*, not any specific integration. |
 | `tpt-graph` | appsec | Serve graph-derived data (attack paths, infrastructure relationships) from the Cartography/Neo4j graph. |
 | `tpt` (this repo) | tpt | IaC, docs, local dev stack, schemas, test data, agent tooling |
 
-## The Kafka seam
+## The collector callback seam
 
-The backend and the data collector meet over **one shared Kafka topic** (`appsec.tpt`, JSON values,
-no schema registry). The message **key is a type discriminator**, not a partition/entity key. Three
-kinds of message ride the same topic, told apart only by key:
+> **Transition:** ADR-0005 replaces Kafka with the design below. Until the migration is finished,
+> the code still uses the shared Kafka topic `appsec.tpt` (the message key is a type discriminator;
+> keys live in `KafkaKey` in the backend and as string literals in the data collector). Check the
+> code for which path is live.
 
-- **commands** — "do this sync" (mostly backend→backend, an internal work queue)
-- **lifecycle signals** — "a sync started / finished" (drive SSE to the frontend)
-- **data payloads** — the actual collected data the backend ingests into PostgreSQL
+The backend and the data collector meet over **HTTP in both directions**:
 
-Only three keys actually cross the repo boundary (data collector → backend): a *started* signal, a
-*finished* signal, and the vulnerability **data payload**. Everything else is backend-internal.
+- **trigger** — the backend asks the data collector to start a job. The data collector validates,
+  answers **202 Accepted**, and works in the background.
+- **callbacks** — when results are ready, the data collector POSTs them to the backend: **data
+  payloads** (one request per repo for GitHub vulnerability data, check results) and **lifecycle
+  signals** (sync started / complete; "complete" is always sent). GitHub webhooks also end in a
+  callback.
 
-> **The keys and payload schemas are volatile — they change often and are added to freely.** The
-> authoritative, current list lives in the code (`KafkaKey` in the backend; the string literals in
-> the data collector), **not here**. This document describes the *shape* of the seam, not its
-> contents. Two consequences worth knowing: keys are hand-written strings with **no shared schema
-> or code between repos**, so a rename on one side silently breaks the other; and the same is true
-> of SSE event names. Treat both as contracts maintained by convention, verified against code.
+Both directions use Entra machine-to-machine tokens. `/internal` paths are reserved for health
+checks and metrics, never for callbacks. The backend's own syncs no longer travel between services;
+they run in-process (see **Sync**).
 
-The data collector never writes to PostgreSQL — it publishes; the backend consumes and stores. The
-backend is the single reader/writer of its own PostgreSQL.
+> **Endpoint paths and payload schemas are volatile and live in code, not here.** This document
+> describes the *shape* of the seam. There is still **no shared schema or code between repos**, so a
+> rename on one side breaks the other; the same holds for SSE event names. Treat both as contracts
+> maintained by convention, verified against code (and against the WireMock stubs in this repo).
+
+The data collector never writes to PostgreSQL — it sends callbacks; the backend stores. The backend
+is the single reader/writer of its own PostgreSQL.
 
 ## The refresh choreography (notify-then-fetch)
 
@@ -105,15 +112,16 @@ during a refresh with a consistent **notify-then-fetch** pattern — SSE carries
 carries the *data*:
 
 1. The frontend asks the backend to refresh (e.g. a team's GitHub data).
-2. The backend clears the stale data and asks the data collector for fresh data (over HTTP).
-3. The data collector emits a **started** signal, does the work, publishes the **data** to Kafka,
-   then emits a **finished** signal. Signals travel as Kafka messages; the backend re-broadcasts
-   them to the frontend over SSE.
+2. The backend clears the stale data and asks the data collector for fresh data (over HTTP, 202).
+3. The data collector sends a **started** callback, does the work, sends the **data** as callbacks,
+   then sends a **finished** callback. The backend writes each signal to the **SSE event log**, so
+   whichever pod holds the frontend's SSE connection pushes it.
 4. On the *finished* signal the frontend **re-fetches over REST** — the SSE event itself carries no
    data, only the news that fresh data is now available.
 
-The same shape recurs for team/vulnerability syncs (triggered over Kafka rather than HTTP). The
-invariant is the pattern; the specific endpoints, event names, and keys live in code and change.
+The same shape recurs for team/vulnerability syncs, which the backend runs itself and signals
+through the same SSE event log. The invariant is the pattern; the specific endpoints and event
+names live in code and change.
 
 ## Architectural intent
 
@@ -156,7 +164,7 @@ TPT's original goal is **vulnerability enrichment** — that is the backend's co
 hold multiple enrichment sources. To stop the backend from scope-creeping as the product grows, the
 rule is: **any new data source or data type that is not vulnerability enrichment belongs in the data
 collector.** The backend receives, handles (possibly enriches), and presents data, and owns user
-context; the data collector reaches out to new external sources and publishes to Kafka. Deciding
+context; the data collector reaches out to new external sources and sends results back as callbacks (ADR-0005). Deciding
 question for new work: *is this vulnerability enrichment?* If yes, backend; if it's a new source or
 kind of data, the data collector.
 
@@ -165,7 +173,10 @@ kind of data, the data collector.
 - The backend is the single source of truth for vulnerability and enrichment data. No other
   service reads from its PostgreSQL.
 - The data collector holds no state the backend depends on. It collects on request (HTTP from the
-  backend) and publishes facts to Kafka; it makes no prioritization decisions.
+  backend, answered with 202) and sends facts back as callbacks; it makes no prioritization decisions.
+- SSE events reach every backend pod through the SSE event log (Postgres LISTEN/NOTIFY), never
+  through in-memory state alone — a browser is connected to one pod, but events can originate on
+  any pod (ADR-0005).
 - **The backend and frontend never touch the Graph — this is a deliberate boundary, not a WIP
   question.** The Graph is populated by Cartography and read only by appsec's own tools over direct
   Bolt: today tpt-graph (its own UI) and the data collector's live `OldDeploymentsCheck`, each with
