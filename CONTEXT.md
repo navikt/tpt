@@ -45,7 +45,7 @@ and presents actionable, risk-scored views per team across three areas:
 | **Finding** | Used in the compliance and golden-path contexts. Means a compliance gap or best-practice deviation. Not a synonym for Vulnerability. |
 | **Action** | A required remediation step in the compliance context. |
 | **User context** | The backend's resolution of the authenticated user (`preferred_username`) to the Teams they belong to, used to fetch that user's relevant data. A relevance mechanism, not access control — see ADR-0002. Owned by the backend. |
-| **Data collector** | The `tpt-data-collector` service. The home for **new data sources and data types that are not vulnerability enrichment** (ADR-0003). On request from the backend (over HTTP, answered with 202) it collects data — e.g. GitHub vulnerability alerts via GraphQL, Cartography/Neo4j checks — and sends it back to the backend as **callbacks** (ADR-0005; Kafka during the transition). Never called "collector service" or "tpt-data-collector" in domain language — just "the data collector". |
+| **Data collector** | The `tpt-data-collector` service. The home for **new data sources and data types that are not vulnerability enrichment** (ADR-0003). On request from the backend (over HTTP, answered with 202) it collects data — e.g. GitHub vulnerability alerts via GraphQL, Cartography/Neo4j checks — and sends it back to the backend as **callbacks** (ADR-0005). Never called "collector service" or "tpt-data-collector" in domain language — just "the data collector". |
 | **Cartography** | CNCF tool that models cloud, GitHub, Kubernetes, and Nais resources as a graph and populates Neo4j. It is the writer to the graph, not a TPT service. |
 | **Graph** | The Cartography-populated Neo4j graph of infrastructure, ownership, and dependency relationships. Today it is read over direct Bolt by appsec's own tools; it is not yet a datasource for the backend or frontend. |
 | **tpt-graph** | An appsec-owned service that reads the Graph over Bolt and serves a read-only attack-path web UI plus a small JSON API for its own frontend. The intent to make it a general graph-access layer for the rest of TPT is research, not current state — see "Architectural intent". |
@@ -78,11 +78,6 @@ Each service owns exactly one named capability — see ADR-0004.
 | `tpt` (this repo) | tpt | IaC, docs, local dev stack, schemas, test data, agent tooling |
 
 ## The collector callback seam
-
-> **Transition:** ADR-0005 replaces Kafka with the design below. Until the migration is finished,
-> the code still uses the shared Kafka topic `appsec.tpt` (the message key is a type discriminator;
-> keys live in `KafkaKey` in the backend and as string literals in the data collector). Check the
-> code for which path is live.
 
 The backend and the data collector meet over **HTTP in both directions**:
 

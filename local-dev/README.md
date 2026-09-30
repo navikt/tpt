@@ -35,7 +35,7 @@ fnox exec -- ./scripts/bootstrap.sh
 Or manually:
 
 ```bash
-# Terminal 1 — backend (starts its own Postgres + Kafka via testcontainers)
+# Terminal 1 — backend (starts its own Postgres via testcontainers)
 cd ../tpt-backend
 ./gradlew runLocalDev
 
@@ -155,7 +155,7 @@ See [`test-data/README.md`](../test-data/README.md) for how to populate these fr
 # Stop all containers
 docker compose --file local-dev/docker-compose.yml down
 
-# Stop and remove volumes (resets database, Kafka, Neo4j)
+# Stop and remove volumes (resets database and Neo4j)
 docker compose --file local-dev/docker-compose.yml down -v
 ```
 
@@ -238,4 +238,3 @@ Neo4j takes 20–30 seconds to become ready. If the data-collector started too e
 ```bash
 docker compose --file local-dev/docker-compose.yml restart tpt-data-collector
 ```
-

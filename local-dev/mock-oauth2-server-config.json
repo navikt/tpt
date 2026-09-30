@@ -41,6 +41,24 @@
           "claims": {
             "aud": "tpt-backend-local"
           }
+        },
+        {
+          "requestParam": "scope",
+          "match": "api://local.appsec.tpt-data-collector/.default",
+          "claims": {
+            "aud": "tpt-data-collector-local",
+            "idtyp": "app",
+            "azp_name": "dev-gcp:appsec:tpt-backend"
+          }
+        },
+        {
+          "requestParam": "scope",
+          "match": "api://tpt-backend-local/.default",
+          "claims": {
+            "aud": "tpt-backend-local",
+            "idtyp": "app",
+            "azp_name": "dev-gcp:appsec:tpt-data-collector"
+          }
         }
       ]
     }

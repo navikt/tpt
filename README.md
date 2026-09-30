@@ -36,9 +36,9 @@ and presents a risk-scored, actionable view per team.
 
 | Repository | Description |
 |---|---|
-| [navikt/tpt-backend](https://github.com/navikt/tpt-backend) | Ktor API — vulnerability data, risk scoring, auth, Kafka sync |
+| [navikt/tpt-backend](https://github.com/navikt/tpt-backend) | Ktor API — vulnerability data, risk scoring, auth, and HTTP callbacks |
 | [navikt/tpt-frontend](https://github.com/navikt/tpt-frontend) | Next.js frontend — vulnerability dashboard |
-| [navikt/tpt-data-collector](https://github.com/navikt/tpt-data-collector) | Data collector — GitHub webhooks, Cartography/Neo4j, Kafka producer |
+| [navikt/tpt-data-collector](https://github.com/navikt/tpt-data-collector) | Data collector — GitHub webhooks, Cartography/Neo4j, and callbacks to the backend |
 | [navikt/tpt-graph](https://github.com/navikt/tpt-graph) | Graph service (team appsec) — reads the Cartography/Neo4j graph over Bolt and serves a read-only attack-path web UI. Candidate graph datasource for TPT (research in progress). |
 | [navikt/tpt](https://github.com/navikt/tpt) | **This repo** — test rig, shared knowledge & coordination hub (docs, ADRs, schemas, test data) |
 
