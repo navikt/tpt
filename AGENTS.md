@@ -7,7 +7,7 @@ This repository serves two roles for the TittPåTing (TPT) stack:
    contract changes with external APIs. It is not a deployable service.
 2. **Shared knowledge & coordination hub** — it is where the team does cross-cutting work that
    spans multiple TPT repos: architecture decisions (ADRs), research notes, brainstorming, and
-   breaking large initiatives into tickets (`to-tickets`) for the individual service repos. The
+   breaking large initiatives into tickets (`to-issues`) for the individual service repos. The
    shared memory and vocabulary that hold the stack together live here.
 
 See `README.md` for an overview.
@@ -88,7 +88,7 @@ Single-context layout: `CONTEXT.md` at repo root, ADRs in `docs/adr/`. See `docs
 ### Keeping the memory in sync
 
 Work lands in the sibling repos without always passing through here. The `sync-memory` project
-skill (`.opencode/skills/sync-memory/`) sweeps the sibling repos since a per-repo watermark
+skill (`.github/skills/sync-memory/`) sweeps the sibling repos since a per-repo watermark
 (`docs/agents/sync-state.json`), finds memory-worthy changes, and proposes `CONTEXT.md`/ADR edits
 plus draft tickets for approval. Run it to catch up the shared memory ("catch up the memory",
 "what changed across the repos").

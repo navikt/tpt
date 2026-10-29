@@ -36,14 +36,14 @@ Two mechanisms were considered:
 **Use pull as the backbone.** We reconcile the memory by sweeping the sibling repos since a per-repo
 watermark, not by asking those repos to report their own changes.
 
-This is implemented as the `sync-memory` project skill (`.opencode/skills/sync-memory/`):
+This is implemented as the `sync-memory` project skill (`.github/skills/sync-memory/`):
 
 - The watermark lives in `docs/agents/sync-state.json` (last reconciled commit SHA + date per repo).
 - The sibling-repo list is derived from the repository map in `CONTEXT.md`, so it stays correct as
   the stack evolves.
 - Each run fetches merged PRs and commits in the window, classifies changes as memory-worthy vs.
   routine, and proposes concrete `CONTEXT.md`/ADR edits plus draft tickets — all under human
-  approval. Tickets are filed via the `to-tickets` skill; memory edits are applied to this repo.
+  approval. Tickets are filed via the `to-issues` skill; memory edits are applied to this repo.
 - The watermark advances only on a completed, approved run.
 
 Push is **explicitly not relied upon.** We may later add lightweight push hints in sibling repos to
@@ -73,6 +73,6 @@ reduce the sweep's workload, but push can never be the guarantee.
 
 ## Related
 
-- `.opencode/skills/sync-memory/SKILL.md` — the implementation.
+- `.github/skills/sync-memory/SKILL.md` — the implementation.
 - `docs/agents/sync-state.json` — the watermark.
 - `docs/agents/domain.md` — how skills consume the memory and flag ADR conflicts.
