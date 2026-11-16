@@ -78,6 +78,12 @@ cd ../tpt && ./scripts/generate-mocks.sh
 fnox exec -- docker compose -f local-dev/docker-compose.yml up --build
 ```
 
+The data collector receives `GITHUB_ORGANIZATION=navikt` by default, matching the
+`navikt/...` repositories in the local test dataset. An unset or empty host value
+uses this default. To use another organization, set a non-blank
+`GITHUB_ORGANIZATION` in the environment before starting Compose. Keep GitHub App
+credentials in the existing fnox workflow.
+
 | Service | URL | Notes |
 |---|---|---|
 | **Frontend** (via Wonderwall) | http://localhost:3000 | **Use this in browser** |
