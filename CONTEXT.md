@@ -33,6 +33,11 @@ and presents actionable, risk-scored views per team across three areas:
   are pass/fail checks, not a separate weighted Findings score. Wider resource support remains
   an architectural direction, not evidence of implemented checks for every resource type.
 
+TPT also supports user-initiated remediation: **Fix with Copilot** starts a
+GitHub cloud agent task for a Vulnerability. This is an external write action,
+not another vulnerability data source. Its capability placement is pending
+review in ADR-0007.
+
 ## Ubiquitous language
 
 | Term | Definition |
@@ -55,7 +60,9 @@ and presents actionable, risk-scored views per team across three areas:
 | **Cartography** | CNCF tool that models cloud, GitHub, Kubernetes, and Nais resources as a graph and populates Neo4j. It is the writer to the graph, not a TPT service. |
 | **Graph** | The Cartography-populated Neo4j graph of infrastructure, ownership, and dependency relationships. Today it is read over direct Bolt by appsec's own tools; it is not yet a datasource for the backend or frontend. |
 | **tpt-graph** | An appsec-owned service that reads the Graph over Bolt and serves a read-only attack-path web UI plus a small JSON API for its own frontend. The intent to make it a general graph-access layer for the rest of TPT is research, not current state — see "Architectural intent". |
-| **Query workspace** | The private appsec investigation tool (`tpt-query-workspace`) for AI-assisted queries against the Graph and rerunning saved investigations. A separate application from the attack-path UI, not a graph-access API for the rest of TPT. |
+| **Query workspace** | The private appsec investigation tool (`tpt-query-workspace`) for AI-generated or manually written Cypher, saved investigations, result graphs, and schema chat. A separate application from the attack-path UI, not a graph-access API for the rest of TPT. |
+| **Schema chat** | A Query workspace assistant that explores cached Graph schema metadata through bounded lookups. It cannot query Graph records; inferred schema relationships are not verified edges or proof of an attack path. |
+| **Remediation task** | A GitHub Copilot cloud agent task requested for a specific Vulnerability and package in a repository. Distinct from a Vulnerability, a Finding, or a compliance Action. |
 | **Sync** | A scheduled or on-demand operation that refreshes data from an external source into PostgreSQL. Sync kinds have short names (e.g. `team_sync`, `vuln_data_sync`, `gcve_sync`); the current set lives in code, not here. The backend runs its own syncs in-process, guarded by a Postgres sync lock (ADR-0005). |
 | **SSE** | Server-Sent Events — the backend's push channel to the frontend. Events are **signals, not data**: an event tells the frontend something changed; the frontend then re-fetches over REST (the "notify-then-fetch" pattern). Cross-service progress arrives as callbacks from the data collector, which the backend re-broadcasts over SSE. Every event goes through the **SSE event log** so that all backend pods see it. |
 | **Callback** | An HTTP request from the data collector to the backend delivering collected data or GitHub vulnerability sync lifecycle signals. Results may originate from a backend-triggered job or a GitHub webhook. Check results do not currently have completion signaling. Authenticated with Entra machine-to-machine tokens. See ADR-0005. |
@@ -96,6 +103,12 @@ The backend and the data collector meet over **HTTP in both directions**:
   window, so completion is not guaranteed to arrive. Check collection currently has no
   equivalent completion signal. GitHub webhooks also produce result callbacks.
 
+A GitHub completion signal marks the end of a collection attempt, not successful
+delivery of every repository's results. It carries no outcome summary.
+Incomplete vulnerability collections do not produce repository result callbacks.
+Repository checks require a complete file inventory; unavailable checks or failed
+dependent reads are omitted, not converted to passing or failing Findings.
+
 Both directions use Entra machine-to-machine tokens. `/internal` paths are reserved for health
 checks and metrics, never for callbacks. The backend's own syncs no longer travel between services;
 they run in-process (see **Sync**).
@@ -120,14 +133,18 @@ carries the *data*:
    does the work, sends data callbacks, and attempts a **finished** callback even on failure.
    Callback retries are bounded, so delivery can still fail. The backend writes received
    signals to the **SSE event log**, so the pod holding the frontend's connection can push them.
-4. On the *finished* signal the frontend **re-fetches over REST** — the SSE event itself carries no
-   data, only the news that fresh data is now available.
+4. On the *finished* signal the frontend **re-fetches over REST** — the SSE event
+   carries no result data and does not guarantee that collection or delivery succeeded.
 
 The same shape recurs for team/vulnerability syncs, which the backend runs itself and signals
 through the same SSE event log. This is the intended refresh pattern, not a guarantee for every
 screen: golden path currently reads stored checks once and independently triggers collection,
 without re-fetching when that collection finishes. The specific endpoints and event names live
 in code and change.
+
+The GitHub view also initiates a refresh on entry when its data is stale, keeps
+displayed results visible during collection, and uses a timeout fallback if the
+completion signal does not arrive.
 
 ### Compliance from synced facts
 
@@ -137,6 +154,27 @@ and monthly history from those facts rather than storing compliance snapshots. T
 includes the active measurement rules; the frontend presents the results rather than owning
 a second status evaluator. Historical coverage begins with recorded facts, not an assumed
 all-clear past. ADR-0006 records this existing production architecture.
+
+SLA deadlines and exposure/deployment overdue counts use calendar days in
+Europe/Oslo. Current defaults are 7 days for critical Vulnerabilities, 60 days for
+other severities, and a 60-day deployment-age deadline. Security Status includes
+the overdue CVEs and packages per Workload. These are backend-owned measurement
+rules, not frontend constants; escalation still includes a workday-based rule.
+
+### User-initiated remediation
+
+Fix with Copilot resolves a Vulnerability from the authenticated user's data and
+requires separate GitHub App user authorization with PKCE. The backend starts a
+cloud agent task, records task identity for deduplication, and attempts to revoke
+the temporary GitHub user token after use; user access tokens are not stored.
+An existing Dependabot PR prevents starting a task for the same remediation.
+
+The frontend's public OAuth callback forwards to an authenticated completion
+route; that route calls the backend with the user's OBO token. This action has
+repository/Vulnerability eligibility checks and GitHub authorization: ADR-0002's
+read-side relevance model does not replace write-action authorization.
+Backend ownership of remediation requires explicit review against ADR-0003 and
+ADR-0004; ADR-0007 is a proposed record, not an accepted placement decision.
 
 ## Architectural intent
 
@@ -190,11 +228,26 @@ It generates Cypher with Vertex AI using an investigation question and cached Gr
 metadata, validates it, and executes it directly over Bolt. Saved investigations rerun their
 stored query and parameters without generation. There is no review-before-execution step.
 
+Users can also run manually written Cypher with JSON parameters through the same
+validation and execution path, without a model or schema snapshot. Saved queries
+retain either query kind in nested folders. Result graphs visualize returned
+entities without fetching additional data.
+
+Schema chat explores cached schema through bounded metadata-only tools. Models
+have no database executor: generation and chat receive schema metadata rather
+than Graph records, query results, or raw execution errors. The application
+executes investigation queries separately. Questions and schema-chat history are
+sent to Vertex AI; free-text input is not automatically sanitized, so users must
+not paste records or secrets.
+
 The workspace owns a separate PostgreSQL catalogue for saved questions, queries, parameters,
 and schema snapshots. It does not store result sets or generation diagnostics there, and
 does not read the backend's PostgreSQL. Access is restricted through Entra group configuration
 and the login sidecar. Application query checks and driver read routing are not a
 database-enforced read-only guarantee; that boundary depends on Neo4j credentials.
+
+Investigation run state and schema-chat history are held in bounded in-memory
+browser sessions and are lost on restart; chat is not persisted in the catalogue.
 
 This is an appsec investigation tool, not the proposed shared graph-access layer. It does
 not change the rule that the TPT backend and frontend never query the Graph.

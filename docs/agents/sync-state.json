@@ -1,9 +1,9 @@
 {
   "$comment": "Watermark for the sync-memory skill. Records the last commit reconciled into this repo's memory (CONTEXT.md + docs/adr/) per sibling repo. The skill advances this after an approved run; edit by hand only to reset a repo's start point. Seeded to the sibling repos' local HEADs at the time the memory baseline (ADR-0001..0003, the seam docs) was established, so the first run sweeps only changes that land after this baseline.",
   "repos": {
-    "navikt/tpt-backend": { "lastSyncedSha": "ebff923b9a71932be1e0ae95bfca2503a34604c4", "lastSyncedAt": "2026-10-29T11:38:50Z" },
-    "navikt/tpt-frontend": { "lastSyncedSha": "9514e9853bbc01c335e4e274b05891425a773c89", "lastSyncedAt": "2026-10-29T11:38:50Z" },
-    "navikt/tpt-data-collector": { "lastSyncedSha": "48a95f77ef04cfb8c33884ce1cdbc16aee4cdb69", "lastSyncedAt": "2026-10-29T11:38:50Z" },
-    "navikt/tpt-graph": { "lastSyncedSha": "bdd04b64d6d23ea36ec38d6284762961c7c82426", "lastSyncedAt": "2026-10-29T11:52:54Z" }
+    "navikt/tpt-backend": { "lastSyncedSha": "f7aebe685b0a3ebd3b400a6e3e632e0140289a52", "lastSyncedAt": "2026-11-16T06:29:53Z" },
+    "navikt/tpt-frontend": { "lastSyncedSha": "adc8723daf5bb4c5d0891b1a968866a2ecdf0882", "lastSyncedAt": "2026-11-16T06:29:53Z" },
+    "navikt/tpt-data-collector": { "lastSyncedSha": "58f60f6e1d617ac5a6289bd4e2afedd4abaef837", "lastSyncedAt": "2026-11-16T06:29:53Z" },
+    "navikt/tpt-graph": { "lastSyncedSha": "235c5f2e13d38e7f43971bc66ca7872b01d88926", "lastSyncedAt": "2026-11-16T06:29:53Z" }
   }
 }
