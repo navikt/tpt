@@ -62,6 +62,12 @@ review in ADR-0007.
 | **tpt-graph** | An appsec-owned service that reads the Graph over Bolt and serves a read-only attack-path web UI plus a small JSON API for its own frontend. The intent to make it a general graph-access layer for the rest of TPT is research, not current state — see "Architectural intent". |
 | **Query workspace** | The private appsec investigation tool (`tpt-query-workspace`) for AI-generated or manually written Cypher, saved investigations, result graphs, and schema chat. A separate application from the attack-path UI, not a graph-access API for the rest of TPT. |
 | **Schema chat** | A Query workspace assistant that explores cached Graph schema metadata through bounded lookups. It cannot query Graph records; inferred schema relationships are not verified edges or proof of an attack path. |
+| **Notification settings** | *(Planned, ADR-0008.)* A Team's opt-in choices for being told about new high-risk Vulnerabilities: threshold (the "Immediately" band only, or it plus "Must be prioritized"), destination, and cadence. Owned by the backend. Only direct Nais team members and TPT admins may change them. |
+| **Digest** | *(Planned, ADR-0008.)* One message to a Team listing the Vulnerabilities that became new since the last digest, sent according to the Team's cadence. Built by the backend; rendered and delivered by the notifier. |
+| **Notification ledger** | *(Planned, ADR-0008.)* The backend's record of which Vulnerabilities, by natural key `(app_nais_id, cve_id, package_name)`, a Team has been told about in their current active period. |
+| **Active period** | The span from when a Vulnerability is seen until it is resolved. A Vulnerability that reappears starts a new active period and can be notified again. |
+| **Destination** | *(Planned, ADR-0008.)* Where a Team's digests go. Today only a Slack channel, stored by ID, that the TPT bot has been invited to. Externally shared channels are not allowed. |
+| **Notifier** | The `appsec-notifiers` delivery API. Stateless: it renders and delivers a digest it is given and never decides what to send. |
 | **Remediation task** | A GitHub Copilot cloud agent task requested for a specific Vulnerability and package in a repository. Distinct from a Vulnerability, a Finding, or a compliance Action. |
 | **Sync** | A scheduled or on-demand operation that refreshes data from an external source into PostgreSQL. Sync kinds have short names (e.g. `team_sync`, `vuln_data_sync`, `gcve_sync`); the current set lives in code, not here. The backend runs its own syncs in-process, guarded by a Postgres sync lock (ADR-0005). |
 | **SSE** | Server-Sent Events — the backend's push channel to the frontend. Events are **signals, not data**: an event tells the frontend something changed; the frontend then re-fetches over REST (the "notify-then-fetch" pattern). Cross-service progress arrives as callbacks from the data collector, which the backend re-broadcasts over SSE. Every event goes through the **SSE event log** so that all backend pods see it. |
@@ -85,10 +91,11 @@ Each service owns exactly one named capability — see ADR-0004.
 
 | Repo | Owner | Capability |
 |---|---|---|
-| `tpt-backend` | tpt | Aggregate vulnerability and findings data, risk-score it, resolve user context, and present it to the frontend. Permanent aggregation hub. |
+| `tpt-backend` | tpt | Aggregate vulnerability and findings data, risk-score it, resolve user context, and present it to Teams, in the frontend or as notifications (ADR-0008). Permanent aggregation hub. |
 | `tpt-frontend` | tpt | Next.js UI — dashboard, per-team views, compliance tab, golden-path tab |
 | `tpt-data-collector` | tpt | Collect findings data from external sources (GitHub, platform, …) on request from the backend and send it back to the backend as callbacks. The concern is *findings collection*, not any specific integration. |
 | `tpt-graph` | appsec | Hosts two independently deployed applications: the graph-derived attack-path UI (`tpt-graph`) and the private Query workspace (`tpt-query-workspace`). |
+| `appsec-notifiers` | appsec | Deliver a given message to a team channel. Scheduled Naisjobs today; a stateless delivery API for Team notifications is planned (ADR-0008). |
 | `tpt` (this repo) | tpt | IaC, docs, local dev stack, schemas, test data, agent tooling |
 
 ## The collector callback seam
@@ -175,6 +182,16 @@ repository/Vulnerability eligibility checks and GitHub authorization: ADR-0002's
 read-side relevance model does not replace write-action authorization.
 Backend ownership of remediation requires explicit review against ADR-0003 and
 ADR-0004; ADR-0007 is a proposed record, not an accepted placement decision.
+
+### Team notifications (planned)
+
+ADR-0008 records the decided design. Nothing is implemented yet. After a complete Team
+sync, the backend scores the Team's Nais workload Vulnerabilities. It compares them with
+the Notification ledger and queues new ones for the next digest. The leader pod sends due
+digests to the notifier synchronously. It records the outcome in an outbox and retries with
+the same delivery ID, which the notifier uses to avoid posting twice. The notifier stores nothing.
+The notifier owns its contract, an OpenAPI spec in `appsec-notifiers`. Until that exists, the draft
+is in navikt/appsec-notifiers#47.
 
 ## Architectural intent
 

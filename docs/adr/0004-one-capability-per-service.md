@@ -3,6 +3,10 @@
 > **Transport note (2026-09-30):** The Kafka transport described below is superseded by
 > [ADR-0005](0005-replace-kafka-with-http-and-postgres-notify.md). The capability boundaries remain
 > valid.
+>
+> **Capability note (2026-11-20):** [ADR-0008](0008-backend-owned-team-notifications.md) widens the
+> backend's capability to present data to Teams as notifications as well, and adds
+> `appsec-notifiers` to the map.
 
 Each TPT service owns exactly one named capability. New functionality belongs in an existing service
 only if it falls squarely within that service's capability; otherwise it goes in a new service.
@@ -27,10 +31,11 @@ Current capability map:
 
 | Service | Capability |
 |---|---|
-| `tpt-backend` | Aggregate vulnerability and findings data, risk-score it, resolve user context, and present it to the frontend. |
+| `tpt-backend` | Aggregate vulnerability and findings data, risk-score it, resolve user context, and present it to Teams, in the frontend or as notifications (ADR-0008). |
 | `tpt-data-collector` | Collect findings data from external sources (GitHub, platform, …) and deliver it to the backend. |
 | `tpt-graph` | Serve graph-derived data (attack paths, infrastructure relationships) from the Cartography/Neo4j graph. |
 | `whodis` | Resolve ownership — map workloads, repositories, and teams to the people and groups responsible for them. |
+| `appsec-notifiers` | Deliver a given message to a team channel. (Added by ADR-0008.) |
 
 **"Concern" is capability-shaped, not integration-shaped.** The data collector's concern is
 *findings collection* — not "GitHub". It may integrate with GitHub today and the Nais platform
