@@ -43,7 +43,7 @@ review in ADR-0007.
 | Term | Definition |
 |---|---|
 | **Vulnerability** | A CVE affecting a specific workload in Nais. The central entity in the prioritization tab. |
-| **Risk Score** | A single number expressing the priority of a Vulnerability. Composed of multiple categories (severity, exploitability, exposure, KEV, EPSS) shown to the user on demand. Never called "priority score" or "threat score". |
+| **Risk Score** | A single number expressing the priority of a Vulnerability. Composed of multiple categories (severity, exploitability, exposure, KEV, EPSS) shown to the user on demand. TPT's own model, a fix-order aid; it plays no part in Security Status or compliance. GitHub alerts get a reduced Risk Score: with no runtime context, exposure, environment, and build age are left out (the repository may not be deployed anywhere), so GitHub scores are not comparable with Workload scores. Never called "priority score" or "threat score". |
 | **CVE** | A Common Vulnerability and Exposure identifier. Used as a key to look up enrichment from GCVE. |
 | **KEV** | Known Exploited Vulnerability — a CISA catalogue flag. Feeds the Risk Score. |
 | **EPSS** | Exploit Prediction Scoring System — probability of exploitation. Feeds the Risk Score. |
@@ -52,10 +52,12 @@ review in ADR-0007.
 | **Team** | A Nais team. The unit of ownership for Workloads. |
 | **Finding** | Used in the compliance and golden-path contexts. Means a compliance gap or best-practice deviation. Not a synonym for Vulnerability. |
 | **Action** | A required remediation step in the compliance context. |
-| **Security Status** | A backend-computed per-Team compliance view of exposure, trend, and maintenance, with an escalation level and monthly history. Distinct from a Vulnerability's Risk Score; not proof of complete regulatory compliance. |
+| **Security Status** | A backend-computed per-Team compliance view of exposure, trend, and maintenance, with an escalation level and monthly history. Measured against etterlevelse requirement K267.3 (SLA deadlines by severity, deployment age); does not use the Risk Score. Not proof of complete regulatory compliance. |
 | **Monthly security history** | Daily Security Status counts grouped by month: on track, needs attention, or act now, plus missing coverage. Computed from recorded lifecycle facts; the current month is provisional. Missing coverage is not an on-track result. |
 | **Work context** | The frontend's shared Team and Workload selection for vulnerability, GitHub, and golden-path display filtering. Separate from token-derived user context; not authorization. The compliance view does not currently apply it. |
 | **User context** | The backend's resolution of the authenticated user (`preferred_username`) to the Teams they belong to, used to fetch that user's relevant data. A relevance mechanism, not access control — see ADR-0002. Owned by the backend. |
+| **Resolved role** | The role the backend returns with the user context (`DEVELOPER`, `TEAM_MEMBER`, `LEADER`, `NONE`, or `ADMIN`), recording which resolution step found the user's Teams. See "User context" in Architectural intent. |
+| **View role** | The role the user picks in the frontend. It only selects layout and level of detail; it never changes which Teams' data is returned. Users wanting more detail switch to a technical view role rather than non-technical views gaining more text. |
 | **Data collector** | The `tpt-data-collector` service. The home for **new data sources and data types that are not vulnerability enrichment** (ADR-0003). On request from the backend (over HTTP, answered with 202) it collects data — e.g. GitHub vulnerability alerts via GraphQL, Cartography/Neo4j checks — and sends it back to the backend as **callbacks** (ADR-0005). Never called "collector service" or "tpt-data-collector" in domain language — just "the data collector". |
 | **Cartography** | CNCF tool that models cloud, GitHub, Kubernetes, and Nais resources as a graph and populates Neo4j. It is the writer to the graph, not a TPT service. |
 | **Graph** | The Cartography-populated Neo4j graph of infrastructure, ownership, and dependency relationships. Today it is read over direct Bolt by appsec's own tools; it is not yet a datasource for the backend or frontend. |
@@ -217,6 +219,18 @@ team picker by figuring out their teams and fetching that data. The invariant to
 a breach otherwise, but because identity-driven selection is what makes the product usable. Resolving
 the user context is a **backend** responsibility (ADR-0003). *(The "not secret" premise is
 conditional on that audience — see ADR-0002 if it ever changes.)*
+
+The backend tries these steps in order; the first that yields Teams wins and sets the resolved role:
+
+1. `DEVELOPER` — the user's Nais team memberships (Nais API).
+2. `TEAM_MEMBER` — the Nais teams listed on the user's Teamkatalogen teams.
+3. `LEADER` — the Nais teams listed on all subteams under the user's Teamkatalogen clusters and
+   product areas. Subteams without a Nais team listed contribute nothing.
+4. `NONE` — no Teams, so no data. The fix is usually in Teamkatalogen (correct team membership,
+   Nais team listed on the team), not in TPT.
+
+`ADMIN` is set from group membership and hides which step resolved the Teams. The view role a
+user picks in the frontend does not affect this resolution.
 
 Note the model is *not* "sidecars own all tokens": the data collector validates inbound tokens
 itself against Entra's JWKS, and the backend attaches a mounted service-account token when calling
