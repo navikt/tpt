@@ -50,6 +50,7 @@ review in ADR-0007.
 | **GCVE** | External CVE enrichment service (`db.gcve.eu`) providing KEV, EPSS, SSVC, and CVSS data. |
 | **Workload** | A Nais application or Nais job. The unit of deployment. Never called "service" or "app" when referring to a Nais entity. |
 | **Team** | A Nais team. The unit of ownership for Workloads. |
+| **Repository identity** | An owner-qualified GitHub name (`owner/name`), preserved through collection, ownership lookups, checks, callbacks, and backend storage. A bare repository name is a legacy backend compatibility input, normalized to `navikt/name`, not the collector's current identity format. |
 | **Finding** | Used in the compliance and golden-path contexts. Means a compliance gap or best-practice deviation. Not a synonym for Vulnerability. |
 | **Action** | A required remediation step in the compliance context. |
 | **Security Status** | A backend-computed per-Team compliance view of exposure, trend, and maintenance, with an escalation level and monthly history. Measured against etterlevelse requirement K267.3 (SLA deadlines by severity, deployment age); does not use the Risk Score. Not proof of complete regulatory compliance. |
@@ -57,13 +58,13 @@ review in ADR-0007.
 | **Work context** | The frontend's shared Team and Workload selection for vulnerability, GitHub, and golden-path display filtering. Separate from token-derived user context; not authorization. The compliance view does not currently apply it. |
 | **User context** | The backend's resolution of the authenticated user (`preferred_username`) to the Teams they belong to, used to fetch that user's relevant data. A relevance mechanism, not access control — see ADR-0002. Owned by the backend. |
 | **Resolved role** | The role the backend returns with the user context (`DEVELOPER`, `TEAM_MEMBER`, `LEADER`, `NONE`, or `ADMIN`), recording which resolution step found the user's Teams. See "User context" in Architectural intent. |
-| **View role** | The role the user picks in the frontend. It only selects layout and level of detail; it never changes which Teams' data is returned. Users wanting more detail switch to a technical view role rather than non-technical views gaining more text. |
+| **View role** | The role the user picks in the frontend. It only selects layout, tab visibility, and level of detail; it never changes which Teams' data is returned. Admin access is separate from the selected view role and does not override role-based tab visibility. Users wanting more detail switch to a technical view role rather than non-technical views gaining more text. |
 | **Data collector** | The `tpt-data-collector` service. The home for **new data sources and data types that are not vulnerability enrichment** (ADR-0003). On request from the backend (over HTTP, answered with 202) it collects data — e.g. GitHub vulnerability alerts via GraphQL, Cartography/Neo4j checks — and sends it back to the backend as **callbacks** (ADR-0005). Never called "collector service" or "tpt-data-collector" in domain language — just "the data collector". |
 | **Cartography** | CNCF tool that models cloud, GitHub, Kubernetes, and Nais resources as a graph and populates Neo4j. It is the writer to the graph, not a TPT service. |
 | **Graph** | The Cartography-populated Neo4j graph of infrastructure, ownership, and dependency relationships. Today it is read over direct Bolt by appsec's own tools; it is not yet a datasource for the backend or frontend. |
 | **tpt-graph** | An appsec-owned service that reads the Graph over Bolt and serves a read-only attack-path web UI plus a small JSON API for its own frontend. The intent to make it a general graph-access layer for the rest of TPT is research, not current state — see "Architectural intent". |
 | **Query workspace** | The private appsec investigation tool (`tpt-query-workspace`) for AI-generated or manually written Cypher, saved investigations, result graphs, and schema chat. A separate application from the attack-path UI, not a graph-access API for the rest of TPT. |
-| **Schema chat** | A Query workspace assistant that explores cached Graph schema metadata through bounded lookups. It cannot query Graph records; inferred schema relationships are not verified edges or proof of an attack path. |
+| **Schema chat** | A Query workspace assistant that receives the complete cached Graph schema metadata on each turn, without tools or database access. Returned label references are validated against that snapshot and used to build bounded evidence views. It cannot query Graph records; inferred schema relationships are not verified edges or proof of an attack path. |
 | **Notification settings** | *(Planned, ADR-0008.)* A Team's opt-in choices for being told about new high-risk Vulnerabilities: threshold (the "Immediately" band only, or it plus "Must be prioritized"), destination, and cadence. Owned by the backend. Only direct Nais team members and TPT admins may change them. |
 | **Digest** | *(Planned, ADR-0008.)* One message to a Team listing the Vulnerabilities that became new since the last digest, sent according to the Team's cadence. Built by the backend; rendered and delivered by the notifier. |
 | **Notification ledger** | *(Planned, ADR-0008.)* The backend's record of which Vulnerabilities, by natural key `(app_nais_id, cve_id, package_name)`, a Team has been told about in their current active period. |
@@ -130,6 +131,13 @@ they run in-process (see **Sync**).
 The data collector never writes to PostgreSQL — it sends callbacks; the backend stores. The backend
 is the single reader/writer of its own PostgreSQL.
 
+Repository identities stay owner-qualified across this seam. The backend accepts both the
+current and legacy check-callback identity fields and normalizes legacy bare names; existing
+records have been migrated, retaining the newest data when identities collide. The data
+collector also preserves the owner in Whodis ownership lookups and matches the Graph's
+qualified repository property. Those external contracts must be compatible; the collector's
+code alone does not establish that the producers have been updated.
+
 ## The refresh choreography (notify-then-fetch)
 
 Data is cached in the backend's PostgreSQL and refreshed asynchronously. The stack keeps the UI live
@@ -170,6 +178,15 @@ other severities, and a 60-day deployment-age deadline. Security Status includes
 the overdue CVEs and packages per Workload. These are backend-owned measurement
 rules, not frontend constants; escalation still includes a workday-based rule.
 
+Team sync fetches all Nais Workload and Vulnerability pages before writing lifecycle
+data. A pagination failure aborts before upserts, resolution, or purging, rather than
+treating missing results as resolved Vulnerabilities. Applying the fetched data is
+not one atomic transaction: later write failures can leave partial changes. Persisted
+sync-completeness metadata is cleared when a sync starts and set only on success.
+The backend publishes failure signals through the SSE event log; the frontend tracks
+affected Teams and warns that their data is outdated until a later success is observed.
+Its SSE proxy forwards reconnect event IDs for replay.
+
 ### User-initiated remediation
 
 Fix with Copilot resolves a Vulnerability from the authenticated user's data and
@@ -187,7 +204,9 @@ ADR-0004; ADR-0007 is a proposed record, not an accepted placement decision.
 
 ### Team notifications (planned)
 
-ADR-0008 records the decided design. Nothing is implemented yet. After a complete Team
+ADR-0008 records the decided notification design; notification delivery is not implemented
+at the reviewed tips. Its complete-Team-sync prerequisite has landed: failed Nais pagination
+no longer produces a partial lifecycle update (navikt/tpt-backend#187). After a complete Team
 sync, the backend scores the Team's Nais workload Vulnerabilities. It compares them with
 the Notification ledger and queues new ones for the next digest. The leader pod sends due
 digests to the notifier synchronously. It records the outcome in an outbox and retries with
@@ -264,8 +283,10 @@ validation and execution path, without a model or schema snapshot. Saved queries
 retain either query kind in nested folders. Result graphs visualize returned
 entities without fetching additional data.
 
-Schema chat explores cached schema through bounded metadata-only tools. Models
-have no database executor: generation and chat receive schema metadata rather
+Schema chat sends the complete cached schema with each question and bounded conversation
+history in a single model request, without lookup tools. Returned label references are
+validated against the snapshot before bounded evidence views are built. Models have no
+database executor: generation and chat receive schema metadata rather
 than Graph records, query results, or raw execution errors. The application
 executes investigation queries separately. Questions and schema-chat history are
 sent to Vertex AI; free-text input is not automatically sanitized, so users must
@@ -279,6 +300,8 @@ database-enforced read-only guarantee; that boundary depends on Neo4j credential
 
 Investigation run state and schema-chat history are held in bounded in-memory
 browser sessions and are lost on restart; chat is not persisted in the catalogue.
+The latest schema-chat diagnostics are also session-local and shown in the UI;
+operational diagnostics are logged, not stored in the catalogue.
 
 This is an appsec investigation tool, not the proposed shared graph-access layer. It does
 not change the rule that the TPT backend and frontend never query the Graph.

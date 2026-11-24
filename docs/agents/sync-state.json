@@ -1,9 +1,10 @@
 {
-  "$comment": "Watermark for the sync-memory skill. Records the last commit reconciled into this repo's memory (CONTEXT.md + docs/adr/) per sibling repo. The skill advances this after an approved run; edit by hand only to reset a repo's start point. Seeded to the sibling repos' local HEADs at the time the memory baseline (ADR-0001..0003, the seam docs) was established, so the first run sweeps only changes that land after this baseline.",
+  "$comment": "Watermark for the sync-memory skill. Records the last commit reconciled into this repo's memory (CONTEXT.md + docs/adr/) per sibling repo. The skill advances this after an approved run; edit by hand only to reset a repo's start point. Initial TPT entries were seeded to the sibling repos' local HEADs when the memory baseline (ADR-0001..0003, the seam docs) was established. appsec-notifiers was added after an approved initial sweep from 2026-11-16T06:29:53Z.",
   "repos": {
-    "navikt/tpt-backend": { "lastSyncedSha": "f7aebe685b0a3ebd3b400a6e3e632e0140289a52", "lastSyncedAt": "2026-11-16T06:29:53Z" },
-    "navikt/tpt-frontend": { "lastSyncedSha": "adc8723daf5bb4c5d0891b1a968866a2ecdf0882", "lastSyncedAt": "2026-11-16T06:29:53Z" },
-    "navikt/tpt-data-collector": { "lastSyncedSha": "58f60f6e1d617ac5a6289bd4e2afedd4abaef837", "lastSyncedAt": "2026-11-16T06:29:53Z" },
-    "navikt/tpt-graph": { "lastSyncedSha": "235c5f2e13d38e7f43971bc66ca7872b01d88926", "lastSyncedAt": "2026-11-16T06:29:53Z" }
+    "navikt/tpt-backend": { "lastSyncedSha": "2ed10c1ed42841ece64b6460cff35055077f9c78", "lastSyncedAt": "2026-11-24T07:22:20Z" },
+    "navikt/tpt-frontend": { "lastSyncedSha": "3441d3730db15f4aaf2dfd5815d663a9acbc1d0f", "lastSyncedAt": "2026-11-24T07:22:20Z" },
+    "navikt/tpt-data-collector": { "lastSyncedSha": "9c9198ac018ee7c6dfe1f57a19f46a6ed73dd188", "lastSyncedAt": "2026-11-24T07:22:20Z" },
+    "navikt/tpt-graph": { "lastSyncedSha": "1a1a38dbaf3d7a3c2053b7eccbab845f690f7fcf", "lastSyncedAt": "2026-11-24T07:22:20Z" },
+    "navikt/appsec-notifiers": { "lastSyncedSha": "ac5290195a90633ca1635f8e04b76ccd05804185", "lastSyncedAt": "2026-11-24T07:22:20Z" }
   }
 }
